@@ -10,11 +10,11 @@
 #define start A0        // start_cycle_button
 #define verin_up A1     //up_verin_button
 #define verin_down A2
-#define CR 8
-#define CL 9
+#define CR A3
+#define CL A4
 #define _5s   5000     // 5 seconds 
 #define _2s   2000     // 2 seconds
-#define DEBUG 0        // for DEBUGing 
+#define DEBUG 1        // for DEBUGing 
 int pins[] = {D1, D2, D3, D4, D5, D6};
 bool _start = false;
 void setup() {      // put your setup code here, to run once:
@@ -35,34 +35,31 @@ void setup() {      // put your setup code here, to run once:
 void verin_command() {
 
   
-  // verin up
-  if (digitalRead(verin_up) == HIGH && digitalRead(verin_down)== LOW){
-    digitalWrite(D1, HIGH);
-    digitalWrite(D2, LOW);
-    #if DEBUG
-    Serial.println("Verin vers le haut");
-    delay(50);
-    #endif
-    
-  } 
-  // verin down
-   if (digitalRead(verin_up) == LOW && digitalRead(verin_down)== HIGH){
-    digitalWrite(D1, LOW);
-    digitalWrite(D2, HIGH);
-    #if DEBUG
-    Serial.println("Verin vers le bas");
-    delay(50);
-    #endif
-  } 
-  // verin stop
-  if (digitalRead(verin_up) == LOW || digitalRead(verin_down)==LOW) {
-    digitalWrite(D1, LOW);
-    digitalWrite(D2, LOW);
-    #if DEBUG
-    Serial.println("Verin stop");
-    delay(50);
-    #endif
-  }
+  int dif_verin = digitalRead(verin_up) - digitalRead(verin_down);
+  switch (dif_verin) {
+    case 1 : 
+      digitalWrite(D1, HIGH);
+      digitalWrite(D2, LOW);
+      #if DEBUG
+      Serial.println("Verin vers le haut");
+      #endif
+      break;
+    case -1 : 
+      digitalWrite(D1, LOW);
+      digitalWrite(D2, HIGH);
+      #if DEBUG
+      Serial.println("Verin vers le bas");
+      #endif
+      break;
+    default : 
+      digitalWrite(D1, LOW);
+      digitalWrite(D2, LOW);
+      #if DEBUG
+      Serial.println("Verin stop");
+      #endif
+      break;
+  
+}
   
 }
 
@@ -72,17 +69,8 @@ void stop_translation() {
   delay(500);
 }
 
-void translation_to_lc() {
+void translation_to_cl() {
   // translation motor sens1
-  digitalWrite(D3, HIGH);
-  digitalWrite(D4, LOW);
-  
-  // helices truns
-  digitalWrite(D5, HIGH);
-  digitalWrite(D6, HIGH);
-}
-void translation_to_rc() {
-  // translation motor sens2
   digitalWrite(D3, LOW);
   digitalWrite(D4, HIGH);
   
@@ -90,13 +78,33 @@ void translation_to_rc() {
   digitalWrite(D5, HIGH);
   digitalWrite(D6, HIGH);
 }
+void translation_to_cr() {
+  // translation motor to right
+  digitalWrite(D3, HIGH);
+  digitalWrite(D4, LOW);
+  
+  // helices truns
+  digitalWrite(D5, HIGH);
+  digitalWrite(D6, HIGH);
+}
+
+
+void normal_cycle(bool cycle){
+  while(cycle){
+    translation_to_cl();
+    if (digitalRead(CL) == HIGH) {
+      break;
+    }
+  }
+}
 
 void init_cycle() {
   while(digitalRead(CR) == LOW) {
-    stop_translation();
-    translation_to_rc();
+    //stop_translation();
+    translation_to_cr();
     if (digitalRead(CR) == HIGH) {
-      break;
+      Serial.println("CRRRRRRRRRRR");
+      break;  
     }
   }
 }
@@ -111,21 +119,24 @@ void loop() {      // put your main code here, to run repeatedly:
     ;
   }
   while (_start) {
-    if (digitalRead(CL)== LOW && digitalRead(CR) == LOW)   {
-        init_cycle();
-    if (digitalRead(CL) == LOW && digitalRead(CR) == HIGH) {
-        stop_translation();
-        translation_to_lc();
+    byte diff_translation = digitalRead(CR) - digitalRead(CL);
+    bool cycle = false;
+    switch (diff_translation){
+     
+      case 1:
+      cycle = true;
+      normal_cycle(cycle);
+      break;
+      default:
+      init_cycle();
+      //stop_translation();
+      break;
+        
     }
-    if (digitalRead(CL) == HIGH && digitalRead(CR) == LOW) {
-      stop_translation();
-      translation_to_rc();
-    }
-    if (digitalRead(CL) == HIGH && digitalRead(CL) == HIGH) {
-        init_cycle();
-    }
-    }
+  }
+
+
     
   }
 
-  }
+  
